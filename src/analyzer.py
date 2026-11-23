@@ -5509,8 +5509,8 @@ Output the complete Decision Dashboard in JSON format."""
             "pct_chg": self._format_percent(today.get('pct_chg')),
             "change_amount": self._format_price(change_amount),
             "amplitude": self._format_percent(amplitude),
-            "volume": self._format_volume(today.get('volume')),
-            "amount": self._format_amount(today.get('amount')),
+            "volume": self._format_volume(today.get('volume'), getattr(self._get_runtime_config(), "report_language", "zh")),  # en_patch.py
+            "amount": self._format_amount(today.get('amount'), getattr(self._get_runtime_config(), "report_language", "zh")),  # en_patch.py
         }
 
         if realtime:

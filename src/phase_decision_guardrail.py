@@ -376,7 +376,14 @@ def _append_reason(phase_decision: Dict[str, Any], reason: str) -> None:
         phase_decision["confidence_reason"] = reason
         return
     if reason not in existing:
-        phase_decision["confidence_reason"] = f"{existing}；{reason}"
+        sep = "；"  # en_patch.py: English reports join the two sentences with a space
+        try:
+            from src.config import get_config
+            if str(getattr(get_config(), "report_language", "zh")).lower().startswith("en"):
+                sep = " "
+        except Exception:
+            pass
+        phase_decision["confidence_reason"] = f"{existing}{sep}{reason}"
 
 
 def _adjustment_limitation_text(adjustment: str, *, language: str) -> str:

@@ -24,6 +24,14 @@ from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 from enum import Enum
 
 from src.config import Config, get_config
+
+
+def _english_report() -> bool:  # en_patch.py: English units in English reports
+    try:
+        return str(getattr(get_config(), "report_language", "zh")).lower().startswith("en")
+    except Exception:
+        return False
+
 from src.enums import ReportType
 from src.market_phase_summary import format_public_market_status_line, format_public_phase_pack_excerpt
 from src.notification_routing import (
@@ -433,7 +441,7 @@ class NotificationService(
         data_sources = data_sources.strip()
         if not data_sources:
             return False
-        lines.append(f"*📋 {labels['data_sources_label']}：{data_sources}*")
+        lines.append(f"*📋 {labels['data_sources_label']}: {data_sources}*")
         return True
 
     def generate_aggregate_report(
@@ -996,7 +1004,7 @@ class NotificationService(
             f"# 📅 {report_date} {labels['report_title']}",
             "",
             f"> {labels['analyzed_prefix']} **{len(results)}** {labels['stock_unit']} | "
-            f"{labels['generated_at_label']}：{datetime.now().strftime('%H:%M:%S')}",
+            f"{labels['generated_at_label']}: {datetime.now().strftime('%H:%M:%S')}",
         ]
         self._append_market_status_line(report_lines, results, report_language)
         report_lines.extend(["---", ""])
@@ -1176,7 +1184,7 @@ class NotificationService(
         # 底部信息（去除免责声明）
         report_lines.extend([
             "",
-            f"*{labels['generated_at_label']}：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*",
+            f"*{labels['generated_at_label']}: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*",
         ])
 
         return "\n".join(report_lines)
@@ -1685,11 +1693,11 @@ class NotificationService(
         # 底部（去除免责声明）
         report_lines.extend([
             "",
-            f"*{labels['generated_at_label']}：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*",
+            f"*{labels['generated_at_label']}: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*",
         ])
         models = self._collect_models_used(results)
         if models:
-            report_lines.append(f"*{labels['analysis_model_label']}：{', '.join(models)}*")
+            report_lines.append(f"*{labels['analysis_model_label']}: {', '.join(models)}*")
 
         return "\n".join(report_lines)
 
@@ -2267,6 +2275,12 @@ class NotificationService(
         sign = "-" if amount < 0 else ""
         abs_amount = abs(amount)
         suffix = cls._CURRENCY_SUFFIX.get((currency or "").upper(), "元")
+        if _english_report():  # en_patch.py
+            code = (currency or "").upper() or "CNY"
+            for div, unit in ((1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")):
+                if abs_amount >= div:
+                    return f"{sign}{abs_amount / div:.2f}{unit} {code}"
+            return f"{sign}{abs_amount:.0f} {code}"
         # Compare the rounded figure too, so 99_999_999 reads 1.00 亿 rather than 10000.00 万.
         if abs_amount >= 1e8 or round(abs_amount / 1e4, 2) >= 1e4:
             return f"{sign}{abs_amount / 1e8:.2f} 亿{suffix}"
@@ -2290,7 +2304,7 @@ class NotificationService(
         if amount != amount:  # NaN
             return "N/A"
         suffix = cls._CURRENCY_SUFFIX.get((currency or "").upper(), "元")
-        return f"{amount:.4f} {suffix}"
+        return f"{amount:.4f} {((currency or '').upper() or suffix) if _english_report() else suffix}"  # en_patch.py
 
     @staticmethod
     def _format_text(value: Any) -> str:
@@ -2480,6 +2494,11 @@ class NotificationService(
             return "N/A"
         sign = "+" if amount > 0 else ("-" if amount < 0 else "")
         a = abs(amount)
+        if _english_report():  # en_patch.py
+            for div, unit in ((1e9, "B"), (1e6, "M"), (1e3, "K")):
+                if a >= div:
+                    return f"{sign}{a / div:.2f}{unit} shares"
+            return f"{sign}{a:.0f} shares"
         # Compare the rounded figure too, so 99_999_999 reads 1.00 亿股 rather than 10000.00 万股.
         if a >= 1e8 or round(a / 1e4, 2) >= 1e4:
             return f"{sign}{a / 1e8:.2f} 亿股"
